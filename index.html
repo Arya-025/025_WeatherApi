@@ -61,6 +61,88 @@
         </div>
     </div>
 
-    
+    <script>
+        function cariLokasi(namaKota) {
+            const urlapi = "https://api.maptiler.com/geocoding/" + encodeURIComponent(namaKota) + ".json?key=g4CpHNFxUmKT8iFUOOpb";
+
+            // Set loading state
+            $("#Lokasi").text("Mencari...");
+            $("#Negara, #Provinsi, #Kecamatan, #Longitude, #Latitude").text("-");
+
+            $.ajax({
+                url: urlapi,
+                method: "GET",
+                success: function(data) {
+                    console.log(data);
+                    
+                    if (!data.features || data.features.length === 0) {
+                        $("#Lokasi").text("Lokasi tidak ditemukan");
+                        return;
+                    }
+
+                    const feature = data.features[0];
+                    
+                    // 1. Lokasi Utama (Text tempat)
+                    let lokasiText = feature.place_name || feature.text;
+                    $("#Lokasi").text(lokasiText);
+
+                    // 2. Koordinat [Longitude, Latitude]
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        $("#Longitude").text(feature.geometry.coordinates[0]);
+                        $("#Latitude").text(feature.geometry.coordinates[1]);
+                    }
+
+                    // 3. Parsing data dari array context (Negara, Provinsi, Kecamatan)
+                    let context = feature.context;
+                    let negara = "-";
+                    let provinsi = "-";
+                    let kecamatan = "-";
+
+                    if (context) {
+                        let countryObj = context.find(item => item.id.startsWith('country'));
+                        let regionObj = context.find(item => item.id.startsWith('region'));
+                        let districtObj = context.find(item => item.id.startsWith('district') || item.id.startsWith('neighborhood') || item.id.startsWith('locality'));
+
+                        if (countryObj) negara = countryObj.text;
+                        if (regionObj) provinsi = regionObj.text;
+                        if (districtObj) kecamatan = districtObj.text;
+                    }
+
+                    if (feature.place_type && feature.place_type.includes('municipality')) {
+                        provinsi = feature.text;
+                    }
+
+                    $("#Negara").text(negara);
+                    $("#Provinsi").text(provinsi);
+                    $("#Kecamatan").text(kecamatan !== '-' ? kecamatan : (feature.text || '-'));
+                },
+                error: function(error) {
+                    console.log(error);
+                    $("#Lokasi").text("Terjadi kesalahan koneksi API.");
+                }
+            });
+        }
+
+        // Jalankan saat pertama kali load
+        $(document).ready(function() {
+            cariLokasi($("#inputKota").val());
+
+            $("#btnCari").click(function() {
+                let keyword = $("#inputKota").val();
+                if(keyword.trim() !== "") {
+                    cariLokasi(keyword);
+                }
+            });
+
+            $("#inputKota").keypress(function(e) {
+                if(e.which === 13) {
+                    let keyword = $(this).val();
+                    if(keyword.trim() !== "") {
+                        cariLokasi(keyword);
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
